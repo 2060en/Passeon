@@ -1,6 +1,7 @@
 package com.ethy.passeon
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -31,6 +32,10 @@ interface PasseonDao {
     fun getAllPassHolders(): Flow<List<PassHolder>>
 
 
+    // ✨ [新增] 刪除一個票夾
+    @Delete
+    suspend fun deletePassHolder(passHolder: PassHolder)
+
     // --- 票券 (Ticket) 的操作 ---
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -49,4 +54,12 @@ interface PasseonDao {
     // ✨ [修正] 這裡的查詢也使用明確的欄位名稱 `pass_holder_id`
     @Query("SELECT * FROM tickets WHERE pass_holder_id = :passHolderId ORDER BY departureTimestamp DESC")
     fun getTicketsByPassHolderId(passHolderId: Int): Flow<List<Ticket>>
+
+    // ✨ [新增] 刪除一張票券
+    @Delete
+    suspend fun deleteTicket(ticket: Ticket)
+
+    // ✨ [新增] 刪除某個票夾底下的所有票券 (當我們刪除票夾時會用到)
+    @Query("DELETE FROM tickets WHERE pass_holder_id = :passHolderId")
+    suspend fun deleteTicketsByPassHolderId(passHolderId: Int)
 }

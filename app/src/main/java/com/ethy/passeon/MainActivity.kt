@@ -4,19 +4,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Train
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -29,7 +37,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ethy.passeon.ui.theme.PasseonTheme
 
-// ✨ [修正] 把 Screen 的定義放回到檔案的頂層
+
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Timeline : Screen("timeline", "時間軸", Icons.Outlined.AccessTime)
     object PassHolders : Screen("pass_holders", "票夾", Icons.Outlined.Style)
@@ -52,7 +60,10 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PasseonApp(viewModel: PasseonViewModel) {
+fun PasseonApp(
+    viewModel: PasseonViewModel
+
+) {
     PasseonTheme {
         val navController = rememberNavController()
 
@@ -123,20 +134,29 @@ fun PasseonApp(viewModel: PasseonViewModel) {
                 startDestination = Screen.Timeline.route,
                 modifier = Modifier.padding(innerPadding)
             ) {
-                composable(Screen.Timeline.route) { TimelineScreen(tickets = tickets) }
+                composable(Screen.Timeline.route) {
+                    // ✨ [修正] 把 viewModel 也一起傳下去
+                    TimelineScreen(
+                        tickets = tickets,
+                        viewModel = viewModel
+                    )
+                }
                 composable(Screen.PassHolders.route) {
                     PassHolderScreen(
                         passHolders = passHolders,
                         tickets = tickets,
+                        viewModel = viewModel,
                         onPassHolderClick = { id -> navController.navigate("pass_holder_details/$id") }
                     )
                 }
-                composable(Screen.Types.route) { TypesScreen(tickets = tickets, navController = navController) }
+                composable(Screen.Types.route) { TypesScreen(tickets = tickets,
+                    viewModel = viewModel,navController = navController) }
 
                 composable("add_ticket_route") {
                     AddTicketScreen(
-                        passHolders = passHolders,
                         onNavigateBack = { navController.popBackStack() },
+                        passHolders = passHolders,
+                        viewModel = viewModel,
                         onAddTicket = { newTicket ->
                             viewModel.insertTicket(newTicket)
                             navController.popBackStack()
@@ -146,6 +166,7 @@ fun PasseonApp(viewModel: PasseonViewModel) {
                 composable("add_pass_holder_route") {
                     AddPassHolderScreen(
                         onNavigateBack = { navController.popBackStack() },
+                        viewModel = viewModel,
                         onAddPassHolder = { newPassHolder ->
                             viewModel.insertPassHolder(newPassHolder)
                             navController.navigate(Screen.PassHolders.route) {
@@ -163,6 +184,7 @@ fun PasseonApp(viewModel: PasseonViewModel) {
                     TypeDetailsScreen(
                         typeName = typeName,
                         onNavigateBack = { navController.popBackStack() },
+                        viewModel = viewModel,
                         tickets = tickets.filter { it.type == typeName },
                     )
                 }
@@ -172,7 +194,10 @@ fun PasseonApp(viewModel: PasseonViewModel) {
                 ) { backStackEntry ->
                     val passHolderId = backStackEntry?.arguments?.getInt("passHolderId")
                     val filteredTickets = tickets.filter { it.passHolderId == passHolderId }
-                    PassHolderDetailScreen(tickets = filteredTickets)
+                    PassHolderDetailScreen(
+                        tickets = filteredTickets,
+                        viewModel = viewModel
+                    )
                 }
             }
         }
@@ -202,15 +227,26 @@ fun AppBottomNavBar(navController: NavController) {
         }
     }
 }
+
+// =======================================================
+// ✨ 全域共享 UI 元件庫 ✨
+// =======================================================
+
+
+
+
 @Composable
-fun TicketCard(ticket: Ticket) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(text = ticket.type, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = ticket.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "屬於票夾 ID: ${ticket.passHolderId ?: "無"}")
-        }
-    }
+fun DeleteConfirmationDialog(
+    itemType: String,
+    itemName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "確認刪除") },
+        text = { Text("您確定要刪除這${if (itemType == "票夾") "個" else "張"}$itemType「$itemName」嗎？\n此動作無法復原。") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("確定") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
 }

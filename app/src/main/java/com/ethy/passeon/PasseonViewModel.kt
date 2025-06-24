@@ -35,6 +35,18 @@ class PasseonViewModel(private val dao: PasseonDao) : ViewModel() {
     fun insertTicket(ticket: Ticket) = viewModelScope.launch {
         dao.insertTicket(ticket)
     }
+
+    // ✨ [新增] 提供「刪除票券」的服務
+    fun deleteTicket(ticket: Ticket) = viewModelScope.launch {
+        dao.deleteTicket(ticket)
+    }
+
+    // ✨ [新增] 提供「刪除票夾」的服務
+    // 注意：刪除票夾時，我們會一併刪除它底下的所有票券，避免產生孤兒資料
+    fun deletePassHolder(passHolder: PassHolder) = viewModelScope.launch {
+        dao.deleteTicketsByPassHolderId(passHolder.id)
+        dao.deletePassHolder(passHolder)
+    }
 }
 
 /**

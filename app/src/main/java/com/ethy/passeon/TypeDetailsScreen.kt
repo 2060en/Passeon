@@ -9,6 +9,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -19,8 +23,12 @@ import androidx.compose.ui.unit.dp
 fun TypeDetailsScreen(
     typeName: String, // 接收傳來的類型名稱，例如 "高鐵"
     tickets: List<Ticket>,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: PasseonViewModel
+
 ) {
+    // ✨ [新增] 用一個狀態，記住使用者「正準備要刪除」哪一張票
+    var ticketToDelete by remember { mutableStateOf<Ticket?>(null) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -41,7 +49,10 @@ fun TypeDetailsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(filteredTickets) { ticket ->
-                TicketCard(ticket = ticket)
+                TicketCard(
+                    ticket = ticket,
+                    onLongClick = { ticketToDelete = ticket }
+                )
             }
         }
     }

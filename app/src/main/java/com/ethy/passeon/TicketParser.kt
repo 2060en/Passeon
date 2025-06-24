@@ -6,7 +6,7 @@ import java.util.regex.Pattern
 object TicketParser {
 
     // ✨ 這是對外的主要窗口，我們把 parseTicket 改名為更簡潔的 parse
-    fun parse(text: String): Map<String, String> {
+    fun parse(text: String): Map<String, Any> {
         // 優先判斷是否為台鐵
         if (isDefinitelyTRA(text)) {
             return parseTraTicket(text)
@@ -39,59 +39,63 @@ object TicketParser {
         return false
     }
 
-    private fun parseTraTicket(text: String): Map<String, String> {
-        val result = parseBasicInfo(text, StationData.traStations, "台鐵")
+    private fun parseTraTicket(text: String): Map<String, Any> {
+        // ✨ [修正] 明確指定 result 是一個可以裝任何東西的「大水桶」
+        val result: MutableMap<String, Any> = parseBasicInfo(text, StationData.traStations, "台鐵").toMutableMap()
+        val customFields = mutableMapOf<String, String>()
         val lines = text.split("\n")
         // --- 解析詳細資訊 (台鐵) ---
         // ✨ [修改] 新增「XXX次」的判斷邏輯
         var trainNoMatch = Regex("車次\\s*(\\d+)").find(text)
         if (trainNoMatch == null) {
-            // 如果找不到「車次 XXX」，就試著找「XXX次」
             trainNoMatch = Regex("(\\d+)次").find(text)
         }
         trainNoMatch?.let {
-            result["trainNo"] = it.groupValues[1]
+            customFields["車次"] = it.groupValues[1] // ✨ 存入魔術袋
         }
-        // ✨ [修改] 採用新的「純數字規律」來辨識車廂和座位
-        val carSeatRegex = Regex("^(\\d{1,2})\\s+(\\d{1,3})") // 尋找 "數字<空格>數字" 格式的行
-        for (line in lines) {
+        // ✨ [修正] 移除 .let，改用標準的 if 判斷式，讓 break 合法
+        val carSeatRegex = Regex("^(\\d{1,2})\\s+(\\d{1,3})")
+        for (line in text.split("\n")) {
             val match = carSeatRegex.find(line)
             if (match != null) {
-                result["carNo"] = match.groupValues[1]
-                result["seatNo"] = match.groupValues[2]
-                break // 現在 break 是直接在 for 迴圈裡，合法！
+                customFields["車廂"] = match.groupValues[1] // ✨ 存入魔術袋
+                customFields["座位"] = match.groupValues[2] // ✨ 存入魔術袋
+                break // 現在 break 是合法的！
             }
         }
         // 如果上面的方法找不到，再用「X車X號」當作備用方案
         if (!result.containsKey("carNo")) {
             Regex("(\\d+)\\s*車\\s*(\\d+)\\s*號").find(text)?.let {
-                result["carNo"] = it.groupValues[1]
-                result["seatNo"] = it.groupValues[2]
+                customFields["車廂"] = it.groupValues[1]
+                customFields["座位"] = it.groupValues[2]
             }
         }
+        result["customFields"] = customFields // ✨ 把整個魔術袋放進最終結果
         return result
     }
 
-    private fun parseThsrTicket(text: String): Map<String, String> {
-        val result = parseBasicInfo(text, StationData.thsrStations, "高鐵")
+    private fun parseThsrTicket(text: String): Map<String, Any> {
+        val result: MutableMap<String, Any> = parseBasicInfo(text, StationData.thsrStations, "高鐵").toMutableMap()
+        val customFields = mutableMapOf<String, String>()
         // --- 解析詳細資訊 (高鐵) ---
         Regex("車次\\s*(\\d+)").find(text)?.let {
-            result["trainNo"] = it.groupValues[1]
+            customFields["車次"] = it.groupValues[1] // ✨ 存入魔術袋
         }
         Regex("車廂\\s*(\\d+)").find(text)?.let {
-            result["carNo"] = it.groupValues[1]
+            customFields["車廂"] = it.groupValues[1] // ✨ 存入魔術袋
         }
         Regex("座位\\s*([A-Z0-9]+)").find(text)?.let {
-            result["seatNo"] = it.groupValues[1]
+            customFields["座位"] = it.groupValues[1] // ✨ 存入魔術袋
         }
+        result["customFields"] = customFields // ✨ 把整個魔術袋放進最終結果
         return result
     }
 
-    // ✨ [新增] 為了避免重複，我們把解析基本資訊的邏輯抽出來變成一個共用函式
-    private fun parseBasicInfo(text: String, stations: List<String>, type: String): MutableMap<String, String> {
+    // ✨ parseBasicInfo 的回傳值也改成 Map<String, String>
+    private fun parseBasicInfo(text: String, stations: List<String>, type: String): Map<String, String> {
         val result = mutableMapOf<String, String>()
-
-        // 解析起訖站
+        result["type"] = type
+        // --- 解析起訖站 ---
         val condensedText = text.replace("\\s".toRegex(), "")
         val foundStationsInOrder = mutableListOf<String>()
         var searchIndex = 0
@@ -108,11 +112,14 @@ object TicketParser {
             }
         }
         if (foundStationsInOrder.size >= 2) {
-            result["title"] = "${foundStationsInOrder[0]} → ${foundStationsInOrder[1]}"
-            result["type"] = type
+            val origin = foundStationsInOrder[0]
+            val destination = foundStationsInOrder[1]
+            result["title"] = "$origin → $destination"
+            result["origin"] = origin
+            result["destination"] = destination
         }
 
-        // 解析日期和時間
+        // --- 解析日期和時間 ---
         val dateRegex = Regex("(\\d{4})[./-](\\d{2})[./-](\\d{2})")
         val timeRegex = Regex("(\\d{2}:\\d{2})")
         dateRegex.find(text)?.let { result["date"] = it.value }

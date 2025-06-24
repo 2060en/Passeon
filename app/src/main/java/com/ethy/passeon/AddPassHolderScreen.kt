@@ -16,7 +16,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun AddPassHolderScreen(
     onNavigateBack: () -> Unit,
-    onAddPassHolder: (PassHolder) -> Unit
+    onAddPassHolder: (PassHolder) -> Unit,
+    viewModel: PasseonViewModel
 ) {
     var nameState by remember { mutableStateOf("") }
     var descriptionState by remember { mutableStateOf("") }

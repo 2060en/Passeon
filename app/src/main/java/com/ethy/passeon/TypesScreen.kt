@@ -24,9 +24,13 @@ import androidx.navigation.NavController
 @Composable
 fun TypesScreen(
     tickets: List<Ticket>,
-    navController: NavController
+    navController: NavController,
+    viewModel: PasseonViewModel
+
 ) {
     var expandedType by remember { mutableStateOf<String?>(null) }
+    // ✨ [新增] 用一個狀態，記住使用者「正準備要刪除」哪一張票
+    var ticketToDelete by remember { mutableStateOf<Ticket?>(null) }
 
     val groupedTickets = tickets.groupBy { it.type }
 
@@ -68,7 +72,10 @@ fun TypesScreen(
                             val recentTickets = ticketsInGroup.sortedByDescending { it.departureTimestamp }.take(5)
                             recentTickets.forEach { ticket ->
                                 Box(modifier = Modifier.padding(vertical = 4.dp)) {
-                                    TicketCard(ticket = ticket)
+                                    TicketCard(
+                                        ticket = ticket,
+                                        onLongClick = { ticketToDelete = ticket }
+                                    )
                                 }
                             }
 
