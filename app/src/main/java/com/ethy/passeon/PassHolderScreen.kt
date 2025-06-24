@@ -1,5 +1,6 @@
 package com.ethy.passeon
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,42 +13,89 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-// ✨ [修改] 加上 Scaffold 和 FAB
+// ✨ [修改] 整個結構都用 Scaffold 包起來，並加上 TopAppBar
+@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//fun PassHolderScreen(
+//    passHolders: List<PassHolder>,
+//    tickets: List<Ticket>,
+//    onNavigateToAddPassHolder: () -> Unit
+//) {
+//    Scaffold(
+//        topBar = {
+//            TopAppBar(
+//                title = { Text("我的票夾") },
+//                // ✨ [修改] 在右上角新增一個「+」圖示按鈕
+//                actions = {
+//                    IconButton(onClick = onNavigateToAddPassHolder) {
+//                        Icon(Icons.Default.Add, contentDescription = "新增票夾")
+//                    }
+//                }
+//            )
+//        }
+//    ) { innerPadding ->
+//        LazyColumn(
+//            modifier = Modifier.padding(innerPadding),
+//            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+//            verticalArrangement = Arrangement.spacedBy(16.dp)
+//        ) {
+//            items(passHolders) { passHolder ->
+//                val ticketCount = tickets.count { it.passHolderId == passHolder.id }
+//                PassHolderCard(passHolder = passHolder, ticketCount = ticketCount)
+//            }
+//        }
+//    }
+//}
 @Composable
+//fun PassHolderScreen(
+//    passHolders: List<PassHolder>,
+//    tickets: List<Ticket>,
+//
+//) {
+//    LazyColumn(
+//        contentPadding = PaddingValues(16.dp),
+//        verticalArrangement = Arrangement.spacedBy(16.dp)
+//    ) {
+//        items(passHolders) { passHolder ->
+//            val ticketCount = tickets.count { it.passHolderId == passHolder.id }
+//            PassHolderCard(passHolder = passHolder, ticketCount = ticketCount)
+//        }
+//    }
+//}
+
 fun PassHolderScreen(
     passHolders: List<PassHolder>,
     tickets: List<Ticket>,
-    onNavigateToAddPassHolder: () -> Unit // ✨ 新增參數，用來接收「如何跳去新增頁」的指令
+    onPassHolderClick: (Int) -> Unit
 ) {
-    Scaffold(
-        // ✨ [修改] 將 FloatingActionButton 換成 ExtendedFloatingActionButton
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                text = { Text("新增票夾") },
-                icon = { Icon(Icons.Default.Add, contentDescription = "新增票夾") },
-                onClick = onNavigateToAddPassHolder,
-                modifier = Modifier.height(72.dp) // ✨ 加上跟主畫面一樣的高度
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(passHolders) { passHolder ->
+            val ticketCount = tickets.count { it.passHolderId == passHolder.id }
+            PassHolderCard(
+                passHolder = passHolder,
+                ticketCount = ticketCount,
+                onClick = { onPassHolderClick(passHolder.id) }
             )
-        }
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(passHolders) { passHolder ->
-                val ticketCount = tickets.count { it.passHolderId == passHolder.id }
-                PassHolderCard(passHolder = passHolder, ticketCount = ticketCount)
-            }
         }
     }
 }
 
 // ✨ [正名]
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PassHolderCard(passHolder: PassHolder, ticketCount: Int) {
+fun PassHolderCard(
+    passHolder: PassHolder,
+    ticketCount: Int,
+    onClick: () -> Unit // ✨ 卡片現在知道自己可以被點擊了
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        // ✨ 用 clickable 修飾符讓整張卡片都可以被點擊
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -76,3 +124,4 @@ fun PassHolderCard(passHolder: PassHolder, ticketCount: Int) {
         }
     }
 }
+
