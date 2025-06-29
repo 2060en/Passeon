@@ -40,37 +40,69 @@ object TicketParser {
     }
 
     private fun parseTraTicket(text: String): Map<String, Any> {
-        // ✨ [修正] 明確指定 result 是一個可以裝任何東西的「大水桶」
-        val result: MutableMap<String, Any> = parseBasicInfo(text, StationData.traStations, "台鐵").toMutableMap()
-        val customFields = mutableMapOf<String, String>()
-        val lines = text.split("\n")
-        // --- 解析詳細資訊 (台鐵) ---
-        // ✨ [修改] 新增「XXX次」的判斷邏輯
-        var trainNoMatch = Regex("車次\\s*(\\d+)").find(text)
-        if (trainNoMatch == null) {
-            trainNoMatch = Regex("(\\d+)次").find(text)
+        val result = mutableMapOf<String, String>()
+        result["type"] = "台鐵"
+
+        // 解析起訖站
+        val traStations = StationData.traStations
+        val lines = text.split("\n").filter { it.isNotBlank() }
+        for (line in lines) {
+            if (line.contains("-")) {
+                val parts = line.split("-").map { it.trim() }
+                if (parts.size == 2) {
+                    val originCandidate = parts[0].replace(Regex("\\d{2}:\\d{2}"), "").trim()
+                    val destCandidate = parts[1].replace(Regex("\\d{2}:\\d{2}"), "").trim()
+                    val finalOrigin = traStations.find { it == originCandidate }
+                    val finalDest = traStations.find { it == destCandidate }
+                    if (finalOrigin != null && finalDest != null) {
+                        result["title"] = "$finalOrigin → $finalDest"
+                        result["origin"] = finalOrigin
+                        result["destination"] = finalDest
+                        // ✨ 找到後就不用繼續了，但我們先不跳出，讓後面的邏輯有機會覆蓋更精準的結果
+                    }
+                }
+            }
         }
-        trainNoMatch?.let {
-            customFields["車次"] = it.groupValues[1] // ✨ 存入魔術袋
+
+        // ✨ [修正] 如果上面的主要方法沒找到，就用備用方法，並確保寫入 origin 和 destination
+        if (!result.containsKey("title")) {
+            val foundStations = traStations.filter { text.contains(it) }.distinct()
+            if (foundStations.size >= 2) {
+                val origin = foundStations[0]
+                val destination = foundStations[1]
+                result["title"] = "$origin → $destination"
+                result["origin"] = origin
+                result["destination"] = destination
+            }
         }
-        // ✨ [修正] 移除 .let，改用標準的 if 判斷式，讓 break 合法
+
+
+        // 解析日期和時間
+        Regex("(\\d{4})[./-](\\d{2})[./-](\\d{2})").find(text)?.let { result["date"] = it.value }
+        text.split("\n").drop(2).joinToString("\n").let { body ->
+            Regex("(\\d{2}:\\d{2})").find(body)?.let { result["time"] = it.value }
+        }
+
+        // 解析詳細資訊
+        var trainNoMatch = Regex("車次\\s*[:：]?\\s*(\\d+)").find(text)
+        if (trainNoMatch == null) { trainNoMatch = Regex("(\\d+)次").find(text) }
+        trainNoMatch?.let { result["車次"] = it.groupValues[1] }
+
         val carSeatRegex = Regex("^(\\d{1,2})\\s+(\\d{1,3})")
-        for (line in text.split("\n")) {
+        for (line in lines) {
             val match = carSeatRegex.find(line)
             if (match != null) {
-                customFields["車廂"] = match.groupValues[1] // ✨ 存入魔術袋
-                customFields["座位"] = match.groupValues[2] // ✨ 存入魔術袋
-                break // 現在 break 是合法的！
+                result["車廂"] = match.groupValues[1]
+                result["座位"] = match.groupValues[2]
+                break
             }
         }
-        // 如果上面的方法找不到，再用「X車X號」當作備用方案
-        if (!result.containsKey("carNo")) {
+        if (!result.containsKey("車廂")) {
             Regex("(\\d+)\\s*車\\s*(\\d+)\\s*號").find(text)?.let {
-                customFields["車廂"] = it.groupValues[1]
-                customFields["座位"] = it.groupValues[2]
+                result["車廂"] = it.groupValues[1]
+                result["座位"] = it.groupValues[2]
             }
         }
-        result["customFields"] = customFields // ✨ 把整個魔術袋放進最終結果
         return result
     }
 

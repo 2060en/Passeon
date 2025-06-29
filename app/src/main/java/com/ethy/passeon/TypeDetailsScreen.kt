@@ -23,37 +23,40 @@ import androidx.compose.ui.unit.dp
 fun TypeDetailsScreen(
     typeName: String, // 接收傳來的類型名稱，例如 "高鐵"
     tickets: List<Ticket>,
-    onNavigateBack: () -> Unit,
+    //onNavigateBack: () -> Unit,
     viewModel: PasseonViewModel
 
 ) {
     // ✨ [新增] 用一個狀態，記住使用者「正準備要刪除」哪一張票
     var ticketToDelete by remember { mutableStateOf<Ticket?>(null) }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(typeName, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        // 過濾出所有符合該類型的票券
-        val filteredTickets = tickets.filter { it.type == typeName }
-        LazyColumn(
-            modifier = Modifier.padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(filteredTickets) { ticket ->
-                TicketCard(
-                    ticket = ticket,
-                    onLongClick = { ticketToDelete = ticket }
-                )
+
+    // 如果 ticketToDelete 不是空的，就顯示確認對話框
+    ticketToDelete?.let { ticket ->
+        DeleteConfirmationDialog(
+            itemType = "票券",
+            itemName = ticket.title,
+            onConfirm = {
+                viewModel.deleteTicket(ticket)
+                ticketToDelete = null // 刪除後，將狀態清空，關閉對話框
+            },
+            onDismiss = {
+                ticketToDelete = null // 使用者取消，同樣清空狀態
             }
+        )
+    }
+
+    // 過濾出所有符合該類型的票券
+    val filteredTickets = tickets.filter { it.type == typeName }
+    LazyColumn(
+        // modifier = Modifier.padding(innerPadding), // ✨ 移除 innerPadding，改為直接使用 Modifier.fillMaxSize().padding(16.dp) 或僅 contentPadding
+        contentPadding = PaddingValues(16.dp), // 直接在這裡設定內容邊距
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(filteredTickets) { ticket ->
+            TicketCard(
+                ticket = ticket,
+                onLongClick = { ticketToDelete = ticket }
+            )
         }
     }
 }

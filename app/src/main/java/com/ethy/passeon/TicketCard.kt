@@ -15,15 +15,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.DarkGray
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+//import androidx.compose.ui.node.CanFocusChecker.start
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // 主入口：根據票券類型，選擇要顯示哪種卡片
 @OptIn(ExperimentalFoundationApi::class)
@@ -35,10 +40,22 @@ fun TicketCard(
     // ✨ [Debug] 在這裡印出 TicketCard 收到的最原始的資料！
     Log.d("PasseonDebug", "Rendering TicketCard with data: $ticket")
     // 為了預覽，我們先假設有這些資訊
-    val origin = ticket.customFields["origin"] ?: ticket.origin
+    val origin = ticket.origin
     val destination = ticket.destination
-    // ✨ 為了讓日期格式更美觀，我們只取 YYYY/MM/DD
-    val date = ticket.customFields["date"]?.split(" ")?.get(0) ?: " "
+    // ✨ [修改] 從時間戳反向翻譯回看得懂的日期格式
+    val date = try {
+        // 如果時間戳不是預設的 0，就進行翻譯
+        if (ticket.departureTimestamp != 0L) {
+            val sdf = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+            sdf.format(Date(ticket.departureTimestamp))
+        } else {
+            // 如果是 0，就從 customFields 裡找看看有沒有舊的日期文字
+            ticket.customFields["date"] ?: ""
+        }
+    } catch (e: Exception) {
+        Log.e("TicketCard", "日期格式化失敗: ${e.message}")
+        "" // 如果翻譯失敗，就顯示空白
+    }
 
     when (ticket.type) {
         "高鐵" -> ThsrTicketCard(origin = origin, destination = destination, date = date, onLongClick = onLongClick)
@@ -76,7 +93,7 @@ private fun ThsrTicketCard(origin: String, destination: String, date: String, on
             Text(
                 text = date,
                 fontSize = 14.sp,
-                color = Color.DarkGray,
+                color = DarkGray,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
@@ -84,14 +101,18 @@ private fun ThsrTicketCard(origin: String, destination: String, date: String, on
 
             // 起訖站，疊加在圖片正中間
             Row(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .offset(y = 8.5.dp) // 往下移動 15.dp，你可以調整這個數值
+                    .padding(start = 80.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(origin, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Spacer(modifier = Modifier.width(24.dp))
-                //Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "到", tint = Color(0xFFF57C00), modifier = Modifier.size(32.dp))
-                Spacer(modifier = Modifier.width(24.dp))
-                Text(destination, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+
+                Text(origin, fontSize = 25.sp, color = DarkGray)
+                Spacer(modifier = Modifier.width(40.dp))
+
+                Spacer(modifier = Modifier.width(40.dp))
+                Text(destination, fontSize = 25.sp, color = DarkGray)
             }
         }
     }
@@ -101,7 +122,7 @@ private fun ThsrTicketCard(origin: String, destination: String, date: String, on
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TraTicketCard(origin: String, destination: String, date: String, onLongClick: () -> Unit) {
-    val traBlue = Color(0xFF005BAC)
+
 
     Card(
         modifier = Modifier
@@ -113,7 +134,7 @@ private fun TraTicketCard(origin: String, destination: String, date: String, onL
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(110.dp), // 給定一個固定高度
+                .height(150.dp), // 給定一個固定高度
             contentAlignment = Alignment.CenterStart
         ) {
             // ✨ [修改] 使用 Image 元件來顯示我們的背景圖
@@ -136,11 +157,12 @@ private fun TraTicketCard(origin: String, destination: String, date: String, onL
                     Text(
                         "$origin - $destination",
                         style = MaterialTheme.typography.titleLarge,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = traBlue
+                        color = DarkGray
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(date, fontSize = 14.sp, color = Color.DarkGray)
+                    Text(date, fontSize = 18.sp, color = DarkGray)
                 }
             }
         }

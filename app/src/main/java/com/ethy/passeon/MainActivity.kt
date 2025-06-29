@@ -181,11 +181,11 @@ fun PasseonApp(
                     arguments = listOf(navArgument("typeName") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val typeName = backStackEntry?.arguments?.getString("typeName") ?: ""
+                    // ✨ [修正] 使用簡化後的呼叫方式
                     TypeDetailsScreen(
-                        typeName = typeName,
-                        onNavigateBack = { navController.popBackStack() },
-                        viewModel = viewModel,
+                        typeName = typeName, // ✨ 將解析出的 typeName 傳入
                         tickets = tickets.filter { it.type == typeName },
+                        viewModel = viewModel
                     )
                 }
                 composable(
@@ -246,7 +246,7 @@ fun DeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "確認刪除") },
         text = { Text("您確定要刪除這${if (itemType == "票夾") "個" else "張"}$itemType「$itemName」嗎？\n此動作無法復原。") },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("確定") } },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("刪除") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
 }

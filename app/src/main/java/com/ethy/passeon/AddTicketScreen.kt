@@ -159,6 +159,8 @@ fun AddTicketScreen(
         var trainNoState by remember(customFields) { mutableStateOf(customFields["車次"] ?: "") }
         var carNoState by remember(customFields) { mutableStateOf(customFields["車廂"] ?: "") }
         var seatNoState by remember(customFields) { mutableStateOf(customFields["座位"] ?: "") }
+        var originState by remember(parsedInfo) { mutableStateOf(parsedInfo["origin"] as? String ?: "") }
+        var destinationState by remember(parsedInfo) { mutableStateOf(parsedInfo["destination"] as? String ?: "") }
         TextField(
                     value = titleState,
                     onValueChange = { titleState = it },
@@ -231,17 +233,35 @@ fun AddTicketScreen(
                 if (trainNoState.isNotBlank()) finalCustomFields["車次"] = trainNoState
                 if (carNoState.isNotBlank()) finalCustomFields["車廂"] = carNoState
                 if (seatNoState.isNotBlank()) finalCustomFields["座位"] = seatNoState
+                if (dateState.isNotBlank()) finalCustomFields["date"] = dateState
+                if (timeState.isNotBlank()) finalCustomFields["time"] = timeState
+
+                // ✨ 將日期和時間組合為時間戳
+                val departureTimestamp = try {
+                    val dateTimeString = "$dateState $timeState"
+                    // 這裡需要一個日期時間解析器，例如 SimpleDateFormat
+                    // 假設您的日期格式是 "YYYY-MM-DD" 時間格式是 "HH:MM"
+                    val formatter = java.text.SimpleDateFormat("yyyy/MM/dd HH:mm", java.util.Locale.getDefault())
+                    formatter.parse(dateTimeString)?.time ?: 0L
+                } catch (e: Exception) {
+                    Log.e("AddTicketScreen", "日期時間解析失敗: ${e.message}")
+                    0L
+                }
 
                 val newTicket = Ticket(
                     id = 0,
                     title = titleState,
                     type = typeState,
-                    origin = "",
-                    destination = "",
-                    departureTimestamp = 0L,
+                    origin = originState,       // ✨ 使用解析出的起點
+                    destination = destinationState, // ✨ 使用解析出的終點
+                    departureTimestamp = departureTimestamp, // ✨ 使用解析出的時間戳
                     seatInfo = seatNoState,
                     imageUri = null,
-                    customFields = finalCustomFields, // ✨ 儲存最終的魔術袋內容
+                    // ✨ 這裡的 customFields 其實已經不再需要包含 origin, destination, date, time，
+                    // 因為它們已經有專屬的欄位了。但是為了 TicketCard 的兼容性，您可以暫時保留。
+                    // 更好的做法是修改 TicketCard，讓它直接讀取 ticket.origin, ticket.destination, ticket.departureTimestamp
+                    // 而不是從 customFields 讀取。
+                    customFields = finalCustomFields,
                     passHolderId = selectedPassHolder?.id
                 )
                 onAddTicket(newTicket)
