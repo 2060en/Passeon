@@ -1,6 +1,7 @@
 package com.ethy.passeon
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -125,7 +126,11 @@ fun PasseonApp(
                 ExtendedFloatingActionButton(
                     text = { Text("新增票券") },
                     icon = { Icon(Icons.Default.Add, "新增票券") },
-                    onClick = { navController.navigate("add_ticket_route") }
+                    onClick = {
+                        // ✨ 監聽點 A: 確認按鈕點擊事件被觸發
+                        Log.d("PasseonDebug", "FAB clicked. Navigating to add_ticket_route...")
+                        navController.navigate("add_ticket_route")
+                    }
                 )
             }
         ) { innerPadding ->
@@ -153,8 +158,9 @@ fun PasseonApp(
                     viewModel = viewModel,navController = navController) }
 
                 composable("add_ticket_route") {
+                    Log.d("PasseonDebug", "NavHost: Composable for add_ticket_route is being built.")
                     AddTicketScreen(
-                        onNavigateBack = { navController.popBackStack() },
+
                         passHolders = passHolders,
                         viewModel = viewModel,
                         onAddTicket = { newTicket ->
@@ -164,6 +170,7 @@ fun PasseonApp(
                     )
                 }
                 composable("add_pass_holder_route") {
+
                     AddPassHolderScreen(
                         onNavigateBack = { navController.popBackStack() },
                         viewModel = viewModel,

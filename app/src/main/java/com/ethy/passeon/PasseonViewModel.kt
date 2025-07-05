@@ -1,8 +1,16 @@
 package com.ethy.passeon
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.*
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,6 +33,10 @@ class PasseonViewModel(private val dao: PasseonDao) : ViewModel() {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+    // ✨ [新增] 建立一個私有的、可變的 StateFlow，專門用來存放 OCR 的解析結果
+    private val _parsedOcrResult = MutableStateFlow<Map<String, String>>(emptyMap())
+    // ✨ [新增] 對外提供一個公開的、不可變的 StateFlow，讓 UI 畫面可以訂閱它
+    val parsedOcrResult: StateFlow<Map<String, String>> = _parsedOcrResult.asStateFlow()
 
     // 提供「新增票夾」的服務給 UI 呼叫
     fun insertPassHolder(passHolder: PassHolder) = viewModelScope.launch {
@@ -46,6 +58,37 @@ class PasseonViewModel(private val dao: PasseonDao) : ViewModel() {
     fun deletePassHolder(passHolder: PassHolder) = viewModelScope.launch {
         dao.deleteTicketsByPassHolderId(passHolder.id)
         dao.deletePassHolder(passHolder)
+    }
+    // ✨ [新增] 這是我們新的 OCR 處理中心
+    fun processImage(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val image = InputImage.fromFilePath(context, uri)
+                val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
+
+                recognizer.process(image)
+                    .addOnSuccessListener { visionText ->
+                        Log.d("PasseonDebug", "OCR Result: ---START---\n${visionText.text}\n---END---")
+                        val result = TicketParser.parse(visionText.text)
+                        if (result.isEmpty()) {
+                            _parsedOcrResult.value = mapOf("title" to "無法解析的票券")
+                        } else {
+                            _parsedOcrResult.value = result as Map<String, String>
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("PasseonDebug", "OCR 辨識失敗: ${e.message}")
+                        _parsedOcrResult.value = mapOf("title" to "辨識失敗: ${e.message}")
+                    }
+            } catch (e: Exception) {
+                Log.e("PasseonDebug", "處理圖片時發生錯誤: ${e.message}")
+                _parsedOcrResult.value = mapOf("title" to "讀取圖片失敗")
+            }
+        }
+    }
+    // ✨ [新增] 提供一個方法，讓 UI 在離開頁面或完成操作後，可以清空上次的辨識結果
+    fun clearOcrResult() {
+        _parsedOcrResult.value = emptyMap()
     }
 }
 

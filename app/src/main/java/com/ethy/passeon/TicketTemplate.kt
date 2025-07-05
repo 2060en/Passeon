@@ -1,12 +1,5 @@
 package com.ethy.passeon
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CardMembership
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Train
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-
 // 定義一個欄位的輸入類型
 enum class FieldType {
     TEXT,
@@ -37,7 +30,7 @@ object TemplateRepository {
     private val traStyle = TicketStyles.getStyle("台鐵")
     private val boardingpassStyle = TicketStyles.getStyle("登機證")
     private val movieStyle = TicketStyles.getStyle("電影票")
-    private val membershipStyle = TicketTypeStyle("會員卡", Color(0xFFE0F2F1), Color(0xFF004D40), Icons.Default.CardMembership)
+    private val membershipStyle = TicketStyles.getStyle("會員卡")
 
     // 這是我們目前擁有的所有樣板
     val templates = listOf(
@@ -99,7 +92,7 @@ object TemplateRepository {
         
     )
 
-    fun findTemplate(typeName: String?): TicketTemplate? {
+    fun findTemplate(typeName: Any?): TicketTemplate? {
         return templates.find { it.typeName == typeName }
     }
     
